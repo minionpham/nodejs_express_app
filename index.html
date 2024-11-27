@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>CRUD Students</title>
+    <link rel="stylesheet" type="text/css" href="styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <h1>Students</h1>
+      <div class="form-container">
+        <div>
+          <h2>Add student</h2>
+          <form id="form-add-student">
+            <div class="form-group">
+              <label for="studentId">Student Id:</label>
+              <input type="number" id="studentId" name="studentId" />
+            </div>
+            <div class="form-group">
+              <label for="name">Name:</label>
+              <input type="text" id="name" name="name" />
+            </div>
+            <div class="form-group">
+              <label for="phoneNumber">Phone number:</label>
+              <input type="tel" id="phoneNumber" name="phoneNumber" />
+            </div>
+            <div class="form-group">
+              <label for="birthday">Birthday:</label>
+              <input type="date" id="birthday" name="birthday" />
+            </div>
+            <div class="form-group">
+              <label for="address">Address:</label>
+              <input type="text" id="address" name="address" />
+            </div>
+            <div class="form-group">
+              <button type="submit">Add</button>
+            </div>
+          </form>
+        </div>
+        <div>
+          <h2>Table of students</h2>
+          <table id="table-student">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Student Id</th>
+                <th>Name</th>
+                <th>Phone number</th>
+                <th>Birthday</th>
+                <th>Address</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="table-student-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal for editing student -->
+    <div id="editModal" class="modal">
+      <div class="modal-content">
+        <span class="close" onclick="closeModal()">&times;</span>
+        <h2>Edit student</h2>
+        <form id="form-edit-student">
+          <div class="form-group">
+            <label for="editStudentId">Student Id:</label>
+            <input type="number" id="editStudentId" name="studentId" />
+          </div>
+          <div class="form-group">
+            <label for="editName">Name:</label>
+            <input type="text" id="editName" name="name" />
+          </div>
+          <div class="form-group">
+            <label for="editPhoneNumber">Phone number:</label>
+            <input type="tel" id="editPhoneNumber" name="phoneNumber" />
+          </div>
+          <div class="form-group">
+            <label for="editBirthday">Birthday:</label>
+            <input type="date" id="editBirthday" name="birthday" />
+          </div>
+          <div class="form-group">
+            <label for="editAddress">Address:</label>
+            <input type="text" id="editAddress" name="address" />
+          </div>
+          <div class="form-group">
+            <button type="submit">Save</button>
+            <button type="button" onclick="closeModal()">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <script>
+      const apiUrl = "http://localhost:3000/api/students";
+
+      document.addEventListener("DOMContentLoaded", () => {
+        document
+          .getElementById("form-add-student")
+          .addEventListener("submit", createStudent);
+        fetchStudents();
+      });
+
+      async function fetchStudents() {
+        try {
+          const response = await fetch(apiUrl);
+          if (!response.ok) throw new Error("Network response was not ok");
+          const students = await response.json();
+          renderStudents(students);
+        } catch (error) {
+          console.error("Fetch error:", error);
+        }
+      }
+
+      function renderStudents(students) {
+        const tableBody = document.getElementById("table-student-body");
+        tableBody.innerHTML = "";
+        students.forEach((student, index) => {
+          const row = document.createElement("tr");
+          row.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td>${student.StudentId}</td>
+                    <td>${student.Name}</td>
+                    <td>${student.PhoneNumber}</td>
+                    <td>${new Date(student.Birthday).toLocaleDateString()}</td>
+                    <td>${student.Address}</td>
+                    <td>
+                        <button onclick="openEditModal('${
+                          student._id
+                        }')">Edit</button>
+                        <button onclick="deleteStudent('${
+                          student._id
+                        }')">Delete</button>
+                    </td>
+                `;
+          tableBody.appendChild(row);
+        });
+      }
+
+      async function createStudent(event) {
+        event.preventDefault();
+        const student = {
+          StudentId: document.getElementById("studentId").value,
+          Name: document.getElementById("name").value,
+          PhoneNumber: document.getElementById("phoneNumber").value,
+          Birthday: document.getElementById("birthday").value,
+          Address: document.getElementById("address").value,
+        };
+
+        try {
+          await fetch(apiUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(student),
+          });
+          fetchStudents();
+          event.target.reset();
+        } catch (error) {
+          console.error("Create error:", error);
+        }
+      }
+
+      async function openEditModal(id) {
+        try {
+          const student = await fetch(`${apiUrl}/${id}`).then((res) =>
+            res.json()
+          );
+          document.getElementById("editStudentId").value = student.StudentId;
+          document.getElementById("editName").value = student.Name;
+          document.getElementById("editPhoneNumber").value =
+            student.PhoneNumber;
+          document.getElementById("editBirthday").value =
+            student.Birthday.split("T")[0];
+          document.getElementById("editAddress").value = student.Address;
+
+          document.getElementById("form-edit-student").onsubmit =
+            async function (event) {
+              event.preventDefault();
+              await updateStudent(id);
+            };
+
+          document.getElementById("editModal").style.display = "block";
+        } catch (error) {
+          console.error("Edit error:", error);
+        }
+      }
+
+      async function updateStudent(id) {
+        const student = {
+          StudentId: document.getElementById("editStudentId").value,
+          Name: document.getElementById("editName").value,
+          PhoneNumber: document.getElementById("editPhoneNumber").value,
+          Birthday: document.getElementById("editBirthday").value,
+          Address: document.getElementById("editAddress").value,
+        };
+
+        try {
+          await fetch(`${apiUrl}/${id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(student),
+          });
+          fetchStudents();
+          closeModal();
+        } catch (error) {
+          console.error("Update error:", error);
+        }
+      }
+
+      function closeModal() {
+        document.getElementById("editModal").style.display = "none";
+      }
+
+      async function deleteStudent(id) {
+        try {
+          await fetch(`${apiUrl}/${id}`, { method: "DELETE" });
+          fetchStudents();
+        } catch (error) {
+          console.error("Delete error:", error);
+        }
+      }
+    </script>
+  </body>
+</html>
